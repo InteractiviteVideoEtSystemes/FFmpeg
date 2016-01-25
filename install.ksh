@@ -2,7 +2,7 @@
 
 #Nom du paquetage
 PROJET=ffmpeg
-VERSION=i2.4.12
+VERSION=2.4.12
 #Repertoire temporaire utiliser pour preparer les packages
 TEMPDIR=/tmp
 
@@ -40,7 +40,7 @@ function create_rpm
     cd ./rpmbuild/SPECS/
     cp ../../${PROJET}.spec ${PROJET}.spec
     cd ../../
-    git checkout -b release/$VERSION $VERSION  
+    git checkout -b i$VERSION i$VERSION  
     git status | grep nothing
     if [ $? == 0 ]
     then

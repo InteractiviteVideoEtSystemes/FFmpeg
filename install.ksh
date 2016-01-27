@@ -40,6 +40,11 @@ function create_rpm
     cd ./rpmbuild/SPECS/
     cp ../../${PROJET}.spec ${PROJET}.spec
     cd ../../
+    # we remove the tag locally
+    git tag -d i$VERSION
+    # we recover latest tags
+    git fetch --tags
+    #we create a branch from the tag
     git checkout -b i$VERSION i$VERSION  
     git status | grep nothing
     if [ $? == 0 ]
@@ -74,6 +79,12 @@ function clean
   	# On efface les liens ainsi que le package precedemment créé
   	echo Effacement des fichiers et liens gnupg rpmbuild ${PROJET}.rpm ${TEMPDIR}/${PROJET}
   	rm -rf gnupg rpmbuild ${PROJET}.rpm ${TEMPDIR}/${PROJET}
+    #we clean the repo git
+    git checkout master
+    git pull
+  
+    #we delete the branch no longer used
+    git branch -D $VERSION
 }
 
 case $1 in

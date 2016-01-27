@@ -84,7 +84,7 @@ function clean
     git pull
   
     #we delete the branch no longer used
-    git branch -D $VERSION
+    git branch -D i$VERSION
 }
 
 case $1 in

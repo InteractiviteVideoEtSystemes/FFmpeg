@@ -2,7 +2,7 @@
 
 #Nom du paquetage
 PROJET=ffmpeg
-VERSION=2.4.12
+VERSION=2.4.13
 #Repertoire temporaire utiliser pour preparer les packages
 TEMPDIR=/tmp
 

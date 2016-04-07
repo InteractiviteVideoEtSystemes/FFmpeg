@@ -8,7 +8,7 @@ Vendor:    FFMPEG
 Group:     Applications/Multimedia
 License: GPL
 URL:       http://www.ffmpeg.org
-BuildArchitectures: x86_64
+BuildArchitectures: x86_64 i686 i386 i586
 BuildRoot:  %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires: opencore-amr-devel, x264-devel >= 0.7.0, fdk-aac-devel, gsm-devel
 Requires:  ivespkg, x264 >= 0.7.0-1.ives.el6

@@ -2,7 +2,7 @@ Name:      ffmpeg
 Version:   %_version
 #Ne pas enlever le .ives a la fin de la release !
 #Cela est utilise par les scripts de recherche de package.
-Release:   1.ives%{?dist}
+Release:   2.ives%{?dist}
 Summary:   [IVeS] Utilities and libraries to record, convert and stream audio and video
 Vendor:    FFMPEG
 Group:     Applications/Multimedia
@@ -10,8 +10,12 @@ License: GPL
 URL:       http://www.ffmpeg.org
 BuildArchitectures: x86_64 i686 i386 i586
 BuildRoot:  %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+%ifos el5
+BuildRequires: opencore-amr-devel, x264-devel >= 0.7.0, gsm-devel
+%else
 BuildRequires: opencore-amr-devel, x264-devel >= 0.7.0, fdk-aac-devel, gsm-devel
-Requires:  ivespkg, x264 >= 0.7.0-1.ives.el6
+%endif
+Requires:  ivespkg, x264 >= 0.7.0
 
 %description
 FFmpeg is a very fast video and audio converter. It can also grab from a
@@ -46,7 +50,11 @@ cd ..
 #patch -p0 < single-nal-unit.patch
 #patch -p0 < g711-in-mp4.patch
 #./configure --prefix=/usr --libdir=%{_libdir} --shlibdir=%{_libdir} --enable-pthreads --enable-libgsm --enable-shared --disable-ffplay --disable-ffserver --enable-libmp3lame --enable-libx264 --enable-gpl --disable-devices --enable-swscale --enable-pic
+%ifos el5
+./configure --prefix=/usr --libdir=%{_libdir} --shlibdir=%{_libdir} --enable-pthreads --enable-libgsm --enable-shared --disable-ffplay --disable-ffserver --enable-libx264 --enable-gpl --enable-nonfree --disable-devices --enable-swscale --enable-pic --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-version3
+%else
 ./configure --prefix=/usr --libdir=%{_libdir} --shlibdir=%{_libdir} --enable-pthreads --enable-libgsm --enable-shared --disable-ffplay --disable-ffserver --enable-libx264 --enable-gpl --enable-nonfree --disable-devices --enable-swscale --enable-pic --enable-libfdk-aac --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-version3
+%endif
 make
 
 %install

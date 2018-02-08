@@ -65,12 +65,3 @@ make clean # >> $LOG 2>&1
 make  # >> $LOG 2>&1
 make install # >> $LOG 2>&1
 
-
-done
-
-if [ -d $DOUBANGO/thirdparties/iphone/include ]
-then
-	cp -rp $PREFIX/include/* $DOUBANGO/thirdparties/iphone/include/
-	echo "Installed headers in thirdparties"
-fi
-

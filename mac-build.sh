@@ -6,40 +6,36 @@ then
 	exit 10
 fi
 
-# --disable-filters
+export PREFIX=$HOME/Documents/doubango/doubango/thirdparties/mac
+
+if [ ! -d $PREFIX ]
+then 
+    echo "No doubqngo stack found. Expected to find it in:"
+    echo $PREFIX
+    exit 20
+fi
+
+export LOG=build.log
 
 export  CONFIGURE_FLAGS="  \
 --enable-static \
 --enable-gpl \
---disable-filters \
---disable-parsers \
 --disable-shared \
---disable-network \
---disable-protocols \
 --disable-devices \
---disable-bsfs \
---disable-muxers \
---disable-demuxers \
---disable-ffmpeg \
 --disable-ffplay \
 --disable-ffserver \
---disable-encoders \
---disable-decoders \
 --disable-zlib \
---disable-debug \
 --enable-encoder=h263 \
---enable-encoder=h263p \
 --enable-decoder=h263 \
---enable-encoder=mpeg4 \
---enable-decoder=mpeg4 \
+--enable-encoder=vp8 \
+--enable-decoder=vp8 \
 --enable-decoder=h264 \
---enable-parser=h264 \
---enable-parser=h263 \
---enable-parser=vp8 \
 --enable-filter=hqdn3d \
 --enable-filter=removegrain \
+--disable-filter=coreimage \
 --disable-doc \
 --prefix=$PREFIX \
+--libdir=$PREFIX/lib/x86_64 \
 --disable-debug \
 --disable-programs \
 --enable-pic"
@@ -47,11 +43,17 @@ export  CONFIGURE_FLAGS="  \
 # avresample
 #CONFIGURE_FLAGS="$CONFIGURE_FLAGS --enable-avresample"
 
+export XCRUN_SDK=`echo $PLATFORM | tr '[:upper:]' '[:lower:]'`
+export CC="cc"
+
 ./configure \
---arch=$ARCH \
---cc="$CC" \
 $CONFIGURE_FLAGS \
---prefix="$PREFIX" >> $LOG
+--extra-cflags='-mmacosx-version-min=10.9' \
+--extra-cxxflags='-mmacosx-version-min=10.9' \
+--extra-ldflags='-mmacosx-version-min=10.9' \
+--cc="$CC" \
+--prefix="$PREFIX" # >> $LOG
+
 if [ $? -ne 0 ]
 then
    echo "Failed to configure for arch " $ARCH
@@ -59,15 +61,10 @@ then
 
    exit 20
 fi
-make clean  >> $LOG 2>&1
-make  >> $LOG 2>&1
-make install >> $LOG 2>&1
+make clean # >> $LOG 2>&1
+make  # >> $LOG 2>&1
+make install # >> $LOG 2>&1
 
-if [ -d $DOUBANGO/thirdparties/iphone/lib/$ARCH ]
-then
-	cp $PREFIX/lib/*.a $DOUBANGO/thirdparties/iphone/lib/$ARCH
-	echo "Installed libs for arch " $ARCH " in doubango thirdparties."
-fi
 
 done
 

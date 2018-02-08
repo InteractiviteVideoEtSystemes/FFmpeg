@@ -39,7 +39,6 @@ export  CONFIGURE_FLAGS="  \
 --enable-filter=hqdn3d \
 --enable-filter=removegrain \
 --disable-doc \
---enable-cross-compile \
 --prefix=$PREFIX \
 --disable-debug \
 --disable-programs \
@@ -48,60 +47,10 @@ export  CONFIGURE_FLAGS="  \
 # avresample
 #CONFIGURE_FLAGS="$CONFIGURE_FLAGS --enable-avresample"
 
-#export ARCHS="arm64 armv7s armv7 armv6"
-export ARCHS="arm64 armv7s armv7"
-export DEPLOYMENT_TARGET="7.0"
-export LOG=build.log
-
-for ARCH in $ARCHS
-do
-echo "start build $ARCH" > $LOG
-echo "building $ARCH..."
-export PREFIX=$PWD/ios/$ARCH
-CFLAGS="-arch $ARCH"
-case "$ARCH" in
-i386)
-export PLATFORM="iPhoneSimulator"
-export CFLAGS="$CFLAGS -mios-simulator-version-min=$DEPLOYMENT_TARGET"
-;;
-x86_64)
-export PLATFORM="iPhoneSimulator"
-export CFLAGS="$CFLAGS -mios-simulator-version-min=$DEPLOYMENT_TARGET"
-;;
-arm64)
-PLATFORM="iPhoneOS"
-export EXPORT="GASPP_FIX_XCODE5=1"
-export CFLAGS="$CFLAGS -mios-version-min=$DEPLOYMENT_TARGET"
-;;
-armv7)
-export PLATFORM="iPhoneOS"
-#export CFLAGS='-march=armv7-a -mfloat-abi=softfp  '
-#export LDFLAGS='-Wl,--fix-cortex-a8'
-export CFLAGS="$CFLAGS -mios-version-min=$DEPLOYMENT_TARGET"
-;;
-armv7s)
-export PLATFORM="iPhoneOS"
-export CFLAGS="$CFLAGS -mios-version-min=$DEPLOYMENT_TARGET"
-#export LDFLAGS=" -Wl,--fix-cortex-a8 -L$ARM_LIB -Wl,-rpath-link=$ARM_LIB,-dynamic-linker=/system/bin/linker  -lc -lm -ldl -lgcc"
-#export CFLAGS=" -march=armv7-a -mtune=cortex-a8 -mfpu=neon -msoft-float -D__ARM_ARCH_7__ -mfloat-abi=softfp"
-;;
-*)
-;;
-esac
-
-export XCRUN_SDK=`echo $PLATFORM | tr '[:upper:]' '[:lower:]'`
-export CC="xcrun -sdk $XCRUN_SDK clang"
-export LDFLAGS="$CFLAGS"
-export CXXFLAGS="$CFLAGS"
-
 ./configure \
---target-os=darwin \
 --arch=$ARCH \
 --cc="$CC" \
 $CONFIGURE_FLAGS \
---extra-cflags="$CFLAGS" \
---extra-cxxflags="$CXXFLAGS" \
---extra-ldflags="$LDFLAGS" \
 --prefix="$PREFIX" >> $LOG
 if [ $? -ne 0 ]
 then

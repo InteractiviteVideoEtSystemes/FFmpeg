@@ -2,7 +2,7 @@ Name:      ffmpeg
 Version:   %_version
 #Ne pas enlever le .ives a la fin de la release !
 #Cela est utilise par les scripts de recherche de package.
-Release:   1.ives%{?dist}
+Release:   2.ives%{?dist}
 Summary:   [IVeS] Utilities and libraries to record, convert and stream audio and video
 Vendor:    FFMPEG
 Group:     Applications/Multimedia
@@ -48,7 +48,7 @@ echo "############################# Build"
 echo $PWD
 cd %_topdir
 cd ..
-./configure --prefix=/usr --libdir=%{_libdir} --shlibdir=%{_libdir} --enable-pthreads --enable-libgsm --enable-shared --disable-ffplay --disable-ffserver --enable-libx264 --enable-gpl --enable-nonfree --disable-devices --enable-swscale --enable-pic --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libvpx --enable-version3 --extra-ldflags="-L/home/ebuu/mediaserver/staticdeps/lib" --extra-cflags="-I/home/ebuu/mediaserver/staticdeps/include"
+./configure --prefix=/usr --libdir=%{_libdir} --shlibdir=%{_libdir} --enable-pthreads --enable-libgsm --enable-shared --disable-ffplay --disable-ffserver --enable-libx264 --enable-gpl --enable-nonfree --disable-devices --enable-swscale --enable-pic --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libvpx --enable-version3 --extra-ldflags="-L$HOME/mediaserver/staticdeps/lib" --extra-cflags="-I$HOME/mediaserver/staticdeps/include"
 make
 
 %install

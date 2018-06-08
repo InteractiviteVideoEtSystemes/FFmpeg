@@ -25,6 +25,7 @@ export  CONFIGURE_FLAGS="  \
 --disable-ffplay \
 --disable-ffserver \
 --disable-zlib \
+--disable-openssl \
 --enable-encoder=h263 \
 --enable-decoder=h263 \
 --enable-encoder=vp8 \
@@ -32,7 +33,9 @@ export  CONFIGURE_FLAGS="  \
 --enable-decoder=h264 \
 --enable-filter=hqdn3d \
 --enable-filter=removegrain \
+--disable-filter=coreimagesrc \
 --disable-filter=coreimage \
+--disable-protocol=tls_securetransport \
 --disable-doc \
 --prefix=$PREFIX \
 --libdir=$PREFIX/lib/x86_64 \

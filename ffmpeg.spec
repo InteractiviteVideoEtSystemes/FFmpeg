@@ -2,7 +2,7 @@ Name:      ffmpeg
 Version:   %_version
 #Ne pas enlever le .ives a la fin de la release !
 #Cela est utilise par les scripts de recherche de package.
-Release:   2.ives%{?dist}
+Release:   3.ives%{?dist}
 Summary:   [IVeS] Utilities and libraries to record, convert and stream audio and video
 Vendor:    FFMPEG
 Group:     Applications/Multimedia

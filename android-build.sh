@@ -1,6 +1,6 @@
 #!/bin/sh
 export BUILD_ARCHS="x86_64 arm64 x86 armv5te armv7-a armv7-a-neon" 
-#export BUILD_ARCHS="arm64"
+#export BUILD_ARCHS="x86"
 export SAV_PATH=$PATH
 export LOG=build.log
 export PREFIX=android
@@ -37,7 +37,6 @@ do
       export ANDROID_PREFIX=i686-linux-android
       export ANDROID_TOOLCHAIN=$NDK/toolchains/x86-$GCC_VERSION/prebuilt/linux-x86_64/
       export CFLAGS="-march=x86 -mtune=intel -mssse3 -mfpmath=sse -m32 -fPIC -I/$PATH_X264/android/x86/include"
-      #export CFLAGS='-std=c99 -O -Wall -fpic -pipe   -DANDROID -DNDEBUG  -march=atom -msse3 -ffast-math -mfpmath=sse'
       export LDFLAGS='-L/$PATH_X264/android/x86/lib'
 		;;
 		armv7-a)
@@ -60,8 +59,7 @@ do
 			export SYSROOT=$NDK/platforms/android-$ANDROID_VERSION/arch-arm
       export ANDROID_TOOLCHAIN=$NDK/toolchains/arm-linux-androideabi-$GCC_VERSION/prebuilt/linux-x86_64/
 			export CFLAGS="-march=armv7-a -mfloat-abi=softfp -mfpu=neon -I/$PATH_X264/android/armv7-a-neon/include"
-      #export CFLAGS="-mfloat-abi=softfp -mfpu=neon -marm -mtune=cortex-a8 -march=armv7-a -Os -O3 -fPIC -I/$PATH_X264/android/armv7-a-neon/include"
-			export LDFLAGS="-Wl,--fix-cortex-a8 -L/$PATH_X264/android/armv7-a-neon/lib"
+      export LDFLAGS="-Wl,--fix-cortex-a8 -L/$PATH_X264/android/armv7-a-neon/lib"
 		;;
     arm64)
       echo -e "arm64 config"
@@ -114,9 +112,9 @@ do
   fi 
 
 	if [ $arch = "x86" ]; then \
-	   export CFG_OPT="--enable-pic  \
+	   export CFG_OPT="--disable-everything \
+      --enable-pic  \
       --enable-static \
-      --disable-everything \
       --disable-shared \
       --disable-network \
       --disable-protocols \
@@ -152,7 +150,12 @@ do
       --cross-prefix=${HOST}- \
       --cpu=i686 \
       --sysroot=${SYSROOT} \
-      --disable-inline-asm --disable-devices --disable-amd3dnow --disable-amd3dnowext --enable-asm --enable-yasm"
+      --disable-inline-asm \
+      --disable-asm \
+      --disable-devices \
+      --disable-amd3dnow \
+      --disable-amd3dnowext \
+      --disable-yasm"
       else \
 	    export CFG_OPT="--disable-everything \
       --enable-pic  \

@@ -2356,7 +2356,8 @@ static int mov_read_stsd(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     avio_rb24(pb); /* flags */
     entries = avio_rb32(pb);
 
-    if (entries <= 0) {
+    /* Each entry contains a size (4 bytes) and format (4 bytes). */
+    if (entries <= 0 || entries > atom.size / 8) {
         av_log(c->fc, AV_LOG_ERROR, "invalid STSD entries %d\n", entries);
         return AVERROR_INVALIDDATA;
     }
@@ -2391,6 +2392,12 @@ static int mov_read_stsd(MOVContext *c, AVIOContext *pb, MOVAtom atom)
 
     return mov_finalize_stsd_codec(c, pb, st, sc);
 fail:
+    if (sc->extradata) {
+        int j;
+        for (j = 0; j < sc->stsd_count; j++)
+            av_freep(&sc->extradata[j]);
+    }
+
     av_freep(&sc->extradata);
     av_freep(&sc->extradata_size);
     return ret;
@@ -2433,6 +2440,29 @@ static int mov_read_stsc(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     }
 
     sc->stsc_count = i;
+    for (i = sc->stsc_count - 1; i < UINT_MAX; i--) {
+        int64_t first_min = i + 1;
+        if ((i+1 < sc->stsc_count && sc->stsc_data[i].first >= sc->stsc_data[i+1].first) ||
+            (i > 0 && sc->stsc_data[i].first <= sc->stsc_data[i-1].first) ||
+            sc->stsc_data[i].first < first_min ||
+            sc->stsc_data[i].count < 1 ||
+            sc->stsc_data[i].id < 1) {
+            av_log(c->fc, AV_LOG_WARNING, "STSC entry %d is invalid (first=%d count=%d id=%d)\n", i, sc->stsc_data[i].first, sc->stsc_data[i].count, sc->stsc_data[i].id);
+            if (i+1 >= sc->stsc_count) {
+                sc->stsc_data[i].first = FFMAX(sc->stsc_data[i].first, first_min);
+                if (i > 0 && sc->stsc_data[i].first <= sc->stsc_data[i-1].first)
+                    sc->stsc_data[i].first = FFMIN(sc->stsc_data[i-1].first + 1LL, INT_MAX);
+                sc->stsc_data[i].count = FFMAX(sc->stsc_data[i].count, 1);
+                sc->stsc_data[i].id    = FFMAX(sc->stsc_data[i].id, 1);
+                continue;
+            }
+            av_assert0(sc->stsc_data[i+1].first >= 2);
+            // We replace this entry by the next valid
+            sc->stsc_data[i].first = sc->stsc_data[i+1].first - 1;
+            sc->stsc_data[i].count = sc->stsc_data[i+1].count;
+            sc->stsc_data[i].id    = sc->stsc_data[i+1].id;
+        }
+    }
 
     if (pb->eof_reached)
         return AVERROR_EOF;
@@ -2672,14 +2702,19 @@ static int mov_read_stts(MOVContext *c, AVIOContext *pb, MOVAtom atom)
             && total_sample_count > 100
             && sample_duration/10 > duration / total_sample_count)
             sample_duration = duration / total_sample_count;
-        duration+=(int64_t)sample_duration*sample_count;
+        duration+=(int64_t)sample_duration*(uint64_t)sample_count;
         total_sample_count+=sample_count;
     }
 
     sc->stts_count = i;
 
-    sc->duration_for_fps  += duration;
-    sc->nb_frames_for_fps += total_sample_count;
+    if (duration > 0 &&
+        duration <= INT64_MAX - sc->duration_for_fps &&
+        total_sample_count <= INT64_MAX - sc->nb_frames_for_fps
+    ) {
+        sc->duration_for_fps  += duration;
+        sc->nb_frames_for_fps += total_sample_count;
+    }
 
     if (pb->eof_reached)
         return AVERROR_EOF;
@@ -2950,7 +2985,7 @@ static int64_t add_ctts_entry(MOVStts** ctts_data, unsigned int* ctts_count, uns
         FFMAX(min_size_needed, 2 * (*allocated_size)) :
         min_size_needed;
 
-    if((unsigned)(*ctts_count) + 1 >= UINT_MAX / sizeof(MOVStts))
+    if((unsigned)(*ctts_count) >= UINT_MAX / sizeof(MOVStts) - 1)
         return -1;
 
     ctts_buf_new = av_fast_realloc(*ctts_data, allocated_size, requested_size);
@@ -3490,6 +3525,9 @@ static void mov_build_index(MOVContext *mov, AVStream *st)
     } else {
         unsigned chunk_samples, total = 0;
 
+        if (!sc->chunk_count)
+            return;
+
         // compute total chunk count
         for (i = 0; i < sc->stsc_count; i++) {
             unsigned count, chunk_count;
@@ -3731,6 +3769,11 @@ static int mov_read_trak(MOVContext *c, AVIOContext *pb, MOVAtom atom)
         av_log(c->fc, AV_LOG_ERROR, "stream %d, missing mandatory atoms, broken header\n",
                st->index);
         return 0;
+    }
+    if (sc->chunk_count && sc->stsc_count && sc->stsc_data[ sc->stsc_count - 1 ].first > sc->chunk_count) {
+        av_log(c->fc, AV_LOG_ERROR, "stream %d, contradictionary STSC and STCO\n",
+               st->index);
+        return AVERROR_INVALIDDATA;
     }
 
     fix_timescale(c, sc);
@@ -4340,8 +4383,13 @@ static int mov_read_trun(MOVContext *c, AVIOContext *pb, MOVAtom atom)
         dts += sample_duration;
         offset += sample_size;
         sc->data_size += sample_size;
-        sc->duration_for_fps += sample_duration;
-        sc->nb_frames_for_fps ++;
+
+        if (sample_duration <= INT64_MAX - sc->duration_for_fps &&
+            1 <= INT64_MAX - sc->nb_frames_for_fps
+        ) {
+            sc->duration_for_fps += sample_duration;
+            sc->nb_frames_for_fps ++;
+        }
     }
 
     if (pb->eof_reached)
@@ -6337,7 +6385,9 @@ static int mov_read_packet(AVFormatContext *s, AVPacket *pkt)
     } else {
         int64_t next_dts = (sc->current_sample < st->nb_index_entries) ?
             st->index_entries[sc->current_sample].timestamp : st->duration;
-        pkt->duration = next_dts - pkt->dts;
+
+        if (next_dts >= pkt->dts)
+            pkt->duration = next_dts - pkt->dts;
         pkt->pts = pkt->dts;
     }
     if (st->discard == AVDISCARD_ALL)

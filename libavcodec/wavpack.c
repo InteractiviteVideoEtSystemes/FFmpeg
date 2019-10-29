@@ -85,7 +85,7 @@ typedef struct WavpackContext {
 
 #define LEVEL_DECAY(a)  (((a) + 0x80) >> 8)
 
-static av_always_inline int get_tail(GetBitContext *gb, int k)
+static av_always_inline unsigned get_tail(GetBitContext *gb, int k)
 {
     int p, e, res;
 
@@ -480,7 +480,7 @@ static inline int wv_unpack_stereo(WavpackFrameContext *s, GetBitContext *gb,
         }
 
         if (type == AV_SAMPLE_FMT_S16P) {
-            if (FFABS(L) + (unsigned)FFABS(R) > (1<<19)) {
+            if (FFABS((int64_t)L) + FFABS((int64_t)R) > (1<<19)) {
                 av_log(s->avctx, AV_LOG_ERROR, "sample %d %d too large\n", L, R);
                 return AVERROR_INVALIDDATA;
             }

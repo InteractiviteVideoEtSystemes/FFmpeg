@@ -359,7 +359,7 @@ static int query_formats(AVFilterContext *ctx)
 {
     static const enum AVPixelFormat pix_fmts[] = {
         AV_PIX_FMT_GRAY8, AV_PIX_FMT_GRAY9, AV_PIX_FMT_GRAY10,
-        AV_PIX_FMT_GRAY12, AV_PIX_FMT_GRAY16,
+        AV_PIX_FMT_GRAY12, AV_PIX_FMT_GRAY14, AV_PIX_FMT_GRAY16,
         AV_PIX_FMT_YUV420P, AV_PIX_FMT_YUV422P, AV_PIX_FMT_YUV444P,
         AV_PIX_FMT_YUV440P, AV_PIX_FMT_YUV411P, AV_PIX_FMT_YUV410P,
         AV_PIX_FMT_YUVJ411P, AV_PIX_FMT_YUVJ420P, AV_PIX_FMT_YUVJ422P,
@@ -442,6 +442,14 @@ static int config_output(AVFilterLink *outlink)
 
     if ((ret = ff_framesync_configure(&s->fs)) < 0)
         return ret;
+
+    outlink->time_base = s->fs.time_base;
+
+    if (av_cmp_q(mainlink->time_base, outlink->time_base) &&
+        av_cmp_q(ctx->inputs[1]->time_base, outlink->time_base))
+        av_log(ctx, AV_LOG_WARNING, "not matching timebases found between first input: %d/%d and second input %d/%d, results may be incorrect!\n",
+               mainlink->time_base.num, mainlink->time_base.den,
+               ctx->inputs[1]->time_base.num, ctx->inputs[1]->time_base.den);
 
     return 0;
 }

@@ -283,6 +283,9 @@ static const struct URLProtocol *url_find_protocol(const char *filename)
         }
     }
     av_freep(&protocols);
+    if (av_strstart(filename, "https:", NULL) || av_strstart(filename, "tls:", NULL))
+        av_log(NULL, AV_LOG_WARNING, "https protocol not found, recompile FFmpeg with "
+                                     "openssl, gnutls or securetransport enabled.\n");
 
     return NULL;
 }
@@ -297,10 +300,6 @@ int ffurl_alloc(URLContext **puc, const char *filename, int flags,
        return url_alloc_for_protocol(puc, p, filename, flags, int_cb);
 
     *puc = NULL;
-    if (av_strstart(filename, "https:", NULL) || av_strstart(filename, "tls:", NULL))
-        av_log(NULL, AV_LOG_WARNING, "https protocol not found, recompile FFmpeg with "
-                                     "openssl, gnutls "
-                                     "or securetransport enabled.\n");
     return AVERROR_PROTOCOL_NOT_FOUND;
 }
 
@@ -663,8 +662,7 @@ int ffurl_shutdown(URLContext *h, int flags)
 
 int ff_check_interrupt(AVIOInterruptCB *cb)
 {
-    int ret;
-    if (cb && cb->callback && (ret = cb->callback(cb->opaque)))
-        return ret;
+    if (cb && cb->callback)
+        return cb->callback(cb->opaque);
     return 0;
 }

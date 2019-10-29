@@ -169,7 +169,7 @@ void ff_vc1_inv_trans_8x8_dc_mmi(uint8_t *dest, ptrdiff_t linesize, int16_t *blo
 void ff_vc1_v_overlap_mmi(uint8_t *src, int stride);
 void ff_vc1_h_overlap_mmi(uint8_t *src, int stride);
 void ff_vc1_v_s_overlap_mmi(int16_t *top, int16_t *bottom);
-void ff_vc1_h_s_overlap_mmi(int16_t *left, int16_t *right);
+void ff_vc1_h_s_overlap_mmi(int16_t *left, int16_t *right, int left_stride, int right_stride, int flags);
 
 void ff_vc1_v_loop_filter4_mmi(uint8_t *src, int stride, int pq);
 void ff_vc1_h_loop_filter4_mmi(uint8_t *src, int stride, int pq);
@@ -180,15 +180,15 @@ void ff_vc1_h_loop_filter16_mmi(uint8_t *src, int stride, int pq);
 
 void ff_put_no_rnd_vc1_chroma_mc8_mmi(uint8_t *dst /* align 8 */,
                                       uint8_t *src /* align 1 */,
-                                      int stride, int h, int x, int y);
+                                      ptrdiff_t stride, int h, int x, int y);
 void ff_put_no_rnd_vc1_chroma_mc4_mmi(uint8_t *dst /* align 8 */,
                                       uint8_t *src /* align 1 */,
-                                      int stride, int h, int x, int y);
+                                      ptrdiff_t stride, int h, int x, int y);
 void ff_avg_no_rnd_vc1_chroma_mc8_mmi(uint8_t *dst /* align 8 */,
                                       uint8_t *src /* align 1 */,
-                                      int stride, int h, int x, int y);
+                                      ptrdiff_t stride, int h, int x, int y);
 void ff_avg_no_rnd_vc1_chroma_mc4_mmi(uint8_t *dst /* align 8 */,
                                       uint8_t *src /* align 1 */,
-                                      int stride, int h, int x, int y);
+                                      ptrdiff_t stride, int h, int x, int y);
 
 #endif /* AVCODEC_MIPS_VC1DSP_MIPS_H */

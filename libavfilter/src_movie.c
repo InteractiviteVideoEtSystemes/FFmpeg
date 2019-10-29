@@ -153,14 +153,14 @@ static AVStream *find_stream(void *log, AVFormatContext *avf, const char *spec)
     return found;
 }
 
-static int open_stream(void *log, MovieStream *st)
+static int open_stream(AVFilterContext *ctx, MovieStream *st)
 {
     AVCodec *codec;
     int ret;
 
     codec = avcodec_find_decoder(st->st->codecpar->codec_id);
     if (!codec) {
-        av_log(log, AV_LOG_ERROR, "Failed to find any codec\n");
+        av_log(ctx, AV_LOG_ERROR, "Failed to find any codec\n");
         return AVERROR(EINVAL);
     }
 
@@ -173,9 +173,10 @@ static int open_stream(void *log, MovieStream *st)
         return ret;
 
     st->codec_ctx->refcounted_frames = 1;
+    st->codec_ctx->thread_count = ff_filter_get_nb_threads(ctx);
 
     if ((ret = avcodec_open2(st->codec_ctx, codec, NULL)) < 0) {
-        av_log(log, AV_LOG_ERROR, "Failed to open codec\n");
+        av_log(ctx, AV_LOG_ERROR, "Failed to open codec\n");
         return ret;
     }
 
@@ -238,8 +239,6 @@ static av_cold int movie_common_init(AVFilterContext *ctx)
                "Loop with several streams is currently unsupported\n");
         return AVERROR_PATCHWELCOME;
     }
-
-    av_register_all();
 
     // Try to find the movie format (container)
     iformat = movie->format_name ? av_find_input_format(movie->format_name) : NULL;

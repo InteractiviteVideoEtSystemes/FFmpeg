@@ -240,6 +240,8 @@ static int magy_decode_slice10(AVCodecContext *avctx, void *tdata,
 
         dst = (uint16_t *)p->data[i] + j * sheight * stride;
         if (flags & 1) {
+            if (get_bits_left(&gb) < bps * width * height)
+                return AVERROR_INVALIDDATA;
             for (k = 0; k < height; k++) {
                 for (x = 0; x < width; x++)
                     dst[x] = get_bits(&gb, bps);
@@ -368,6 +370,8 @@ static int magy_decode_slice(AVCodecContext *avctx, void *tdata,
 
         dst = p->data[i] + j * sheight * stride;
         if (flags & 1) {
+            if (get_bits_left(&gb) < 8* width * height)
+                return AVERROR_INVALIDDATA;
             for (k = 0; k < height; k++) {
                 for (x = 0; x < width; x++)
                     dst[x] = get_bits(&gb, 8);
@@ -543,10 +547,7 @@ static int magy_decode_frame(AVCodecContext *avctx, void *data,
     s->hshift[2] =
     s->vshift[2] = 0;
     s->decorrelate = 0;
-    s->max = 256;
     s->bps = 8;
-    s->huff_build = huff_build;
-    s->magy_decode_slice = magy_decode_slice;
 
     format = bytestream2_get_byte(&gbyte);
     switch (format) {
@@ -583,54 +584,46 @@ static int magy_decode_frame(AVCodecContext *avctx, void *data,
         avctx->pix_fmt = AV_PIX_FMT_YUV422P10;
         s->hshift[1] =
         s->hshift[2] = 1;
-        s->max = 1024;
-        s->huff_build = huff_build10;
-        s->magy_decode_slice = magy_decode_slice10;
+        s->bps = 10;
+        break;
+    case 0x76:
+        avctx->pix_fmt = AV_PIX_FMT_YUV444P10;
         s->bps = 10;
         break;
     case 0x6d:
         avctx->pix_fmt = AV_PIX_FMT_GBRP10;
         s->decorrelate = 1;
-        s->max = 1024;
-        s->huff_build = huff_build10;
-        s->magy_decode_slice = magy_decode_slice10;
         s->bps = 10;
         break;
     case 0x6e:
         avctx->pix_fmt = AV_PIX_FMT_GBRAP10;
         s->decorrelate = 1;
-        s->max = 1024;
-        s->huff_build = huff_build10;
-        s->magy_decode_slice = magy_decode_slice10;
         s->bps = 10;
         break;
     case 0x6f:
         avctx->pix_fmt = AV_PIX_FMT_GBRP12;
         s->decorrelate = 1;
-        s->max = 4096;
-        s->huff_build = huff_build12;
-        s->magy_decode_slice = magy_decode_slice10;
         s->bps = 12;
         break;
     case 0x70:
         avctx->pix_fmt = AV_PIX_FMT_GBRAP12;
         s->decorrelate = 1;
-        s->max = 4096;
-        s->huff_build = huff_build12;
-        s->magy_decode_slice = magy_decode_slice10;
         s->bps = 12;
         break;
     case 0x73:
         avctx->pix_fmt = AV_PIX_FMT_GRAY10;
-        s->max = 1024;
-        s->huff_build = huff_build10;
-        s->magy_decode_slice = magy_decode_slice10;
         s->bps = 10;
         break;
     default:
         avpriv_request_sample(avctx, "Format 0x%X", format);
         return AVERROR_PATCHWELCOME;
     }
+    s->max = 1 << s->bps;
+    s->magy_decode_slice = s->bps == 8 ? magy_decode_slice : magy_decode_slice10;
+    if ( s->bps == 8)
+        s->huff_build = huff_build;
+    else
+        s->huff_build = s->bps == 10 ? huff_build10 : huff_build12;
     s->planes = av_pix_fmt_count_planes(avctx->pix_fmt);
 
     bytestream2_skip(&gbyte, 1);

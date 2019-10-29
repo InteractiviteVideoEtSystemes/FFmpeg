@@ -28,7 +28,7 @@
 typedef void ID3D11Device;
 #endif
 
-#include "compat/nvenc/nvEncodeAPI.h"
+#include <ffnvcodec/nvEncodeAPI.h>
 
 #include "compat/cuda/dynlink_loader.h"
 #include "libavutil/fifo.h"
@@ -39,6 +39,27 @@ typedef void ID3D11Device;
 #define MAX_REGISTERED_FRAMES 64
 #define RC_MODE_DEPRECATED 0x800000
 #define RCD(rc_mode) ((rc_mode) | RC_MODE_DEPRECATED)
+
+#define NVENCAPI_CHECK_VERSION(major, minor) \
+    ((major) < NVENCAPI_MAJOR_VERSION || ((major) == NVENCAPI_MAJOR_VERSION && (minor) <= NVENCAPI_MINOR_VERSION))
+
+// SDK 8.1 compile time feature checks
+#if NVENCAPI_CHECK_VERSION(8, 1)
+#define NVENC_HAVE_BFRAME_REF_MODE
+#define NVENC_HAVE_QP_MAP_MODE
+#endif
+
+// SDK 9.0 compile time feature checks
+#if NVENCAPI_CHECK_VERSION(9, 0)
+#define NVENC_HAVE_HEVC_BFRAME_REF_MODE
+#endif
+
+// SDK 9.1 compile time feature checks
+#if NVENCAPI_CHECK_VERSION(9, 1)
+#define NVENC_HAVE_MULTIPLE_REF_FRAMES
+#define NVENC_HAVE_CUSTREAM_PTR
+#define NVENC_HAVE_GETLASTERRORSTRING
+#endif
 
 typedef struct NvencSurface
 {
@@ -113,6 +134,7 @@ typedef struct NvencContext
     NV_ENC_CONFIG encode_config;
     CUcontext cu_context;
     CUcontext cu_context_internal;
+    CUstream cu_stream;
     ID3D11Device *d3d11_device;
 
     int nb_surfaces;
@@ -142,6 +164,8 @@ typedef struct NvencContext
      * when B-frames are present */
     int64_t initial_pts[2];
     int first_packet_output;
+
+    int support_dyn_bitrate;
 
     void *nvencoder;
 
@@ -174,6 +198,9 @@ typedef struct NvencContext
     int cqp;
     int weighted_pred;
     int coder;
+    int b_ref_mode;
+    int a53_cc;
+    int dpb_size;
 } NvencContext;
 
 int ff_nvenc_encode_init(AVCodecContext *avctx);

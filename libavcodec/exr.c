@@ -558,7 +558,7 @@ static int huf_decode(const uint64_t *hcode, const HufDec *hdecod,
     while (lc > 0) {
         const HufDec pl = hdecod[(c << (HUF_DECBITS - lc)) & HUF_DECMASK];
 
-        if (pl.len) {
+        if (pl.len && lc >= pl.len) {
             lc -= pl.len;
             get_code(pl.lit, rlc, c, lc, gb, out, oe, outb);
         } else {
@@ -881,7 +881,7 @@ static int pxr24_uncompress(EXRContext *s, const uint8_t *src,
                 in     = ptr[3] + s->xdelta;
 
                 for (j = 0; j < s->xdelta; ++j) {
-                    uint32_t diff = (*(ptr[0]++) << 24) |
+                    uint32_t diff = ((uint32_t)*(ptr[0]++) << 24) |
                     (*(ptr[1]++) << 16) |
                     (*(ptr[2]++) << 8 ) |
                     (*(ptr[3]++));
@@ -899,7 +899,7 @@ static int pxr24_uncompress(EXRContext *s, const uint8_t *src,
 
 static void unpack_14(const uint8_t b[14], uint16_t s[16])
 {
-    unsigned short shift = (b[ 2] >> 2);
+    unsigned short shift = (b[ 2] >> 2) & 15;
     unsigned short bias = (0x20 << shift);
     int i;
 
@@ -1307,6 +1307,7 @@ static int decode_header(EXRContext *s, AVFrame *frame)
     int magic_number, version, i, flags, sar = 0;
     int layer_match = 0;
     int ret;
+    int dup_channels = 0;
 
     s->current_channel_offset = 0;
     s->xmin               = ~0;
@@ -1350,12 +1351,14 @@ static int decode_header(EXRContext *s, AVFrame *frame)
 
     flags = bytestream2_get_le24(&s->gb);
 
-    if (flags == 0x00)
-        s->is_tile = 0;
-    else if (flags & 0x02)
+    if (flags & 0x02)
         s->is_tile = 1;
-    else{
-        avpriv_report_missing_feature(s->avctx, "flags %d", flags);
+    if (flags & 0x08) {
+        avpriv_report_missing_feature(s->avctx, "deep data");
+        return AVERROR_PATCHWELCOME;
+    }
+    if (flags & 0x10) {
+        avpriv_report_missing_feature(s->avctx, "multipart");
         return AVERROR_PATCHWELCOME;
     }
 
@@ -1387,6 +1390,7 @@ static int decode_header(EXRContext *s, AVFrame *frame)
                         if (*ch_gb.buffer == '.')
                             ch_gb.buffer++;         /* skip dot if not given */
                     } else {
+                        layer_match = 0;
                         av_log(s->avctx, AV_LOG_INFO,
                                "Channel doesn't match layer : %s.\n", ch_gb.buffer);
                     }
@@ -1461,6 +1465,13 @@ static int decode_header(EXRContext *s, AVFrame *frame)
                     }
                     s->pixel_type                     = current_pixel_type;
                     s->channel_offsets[channel_index] = s->current_channel_offset;
+                } else if (channel_index >= 0) {
+                    av_log(s->avctx, AV_LOG_WARNING,
+                            "Multiple channels with index %d.\n", channel_index);
+                    if (++dup_channels > 10) {
+                        ret = AVERROR_INVALIDDATA;
+                        goto fail;
+                    }
                 }
 
                 s->channels = av_realloc(s->channels,
@@ -1853,7 +1864,8 @@ static av_cold int decode_init(AVCodecContext *avctx)
 
 #if HAVE_THREADS
 static int decode_init_thread_copy(AVCodecContext *avctx)
-{    EXRContext *s = avctx->priv_data;
+{
+    EXRContext *s = avctx->priv_data;
 
     // allocate thread data, used for non EXR_RAW compression types
     s->thread_data = av_mallocz_array(avctx->thread_count, sizeof(EXRThreadData));

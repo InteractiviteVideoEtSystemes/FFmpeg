@@ -649,16 +649,6 @@ static inline int get_dmv(MpegEncContext *s)
         return 0;
 }
 
-static inline int get_qscale(MpegEncContext *s)
-{
-    int qscale = get_bits(&s->gb, 5);
-    if (s->q_scale_type)
-        return ff_mpeg2_non_linear_qscale[qscale];
-    else
-        return qscale << 1;
-}
-
-
 /* motion type (for MPEG-2) */
 #define MT_FIELD 1
 #define MT_FRAME 2
@@ -751,7 +741,7 @@ static int mpeg_decode_mb(MpegEncContext *s, int16_t block[12][64])
             s->interlaced_dct = get_bits1(&s->gb);
 
         if (IS_QUANT(mb_type))
-            s->qscale = get_qscale(s);
+            s->qscale = mpeg_get_qscale(s);
 
         if (s->concealment_motion_vectors) {
             /* just parse them */
@@ -819,7 +809,7 @@ static int mpeg_decode_mb(MpegEncContext *s, int16_t block[12][64])
             }
 
             if (IS_QUANT(mb_type))
-                s->qscale = get_qscale(s);
+                s->qscale = mpeg_get_qscale(s);
 
             s->last_mv[0][0][0] = 0;
             s->last_mv[0][0][1] = 0;
@@ -840,7 +830,7 @@ static int mpeg_decode_mb(MpegEncContext *s, int16_t block[12][64])
             }
 
             if (IS_QUANT(mb_type))
-                s->qscale = get_qscale(s);
+                s->qscale = mpeg_get_qscale(s);
 
             /* motion vectors */
             s->mv_dir = (mb_type >> 13) & 3;
@@ -1606,6 +1596,11 @@ static int mpeg_field_start(MpegEncContext *s, const uint8_t *buf, int buf_size)
     Mpeg1Context *s1      = (Mpeg1Context *) s;
     int ret;
 
+    if (!(avctx->flags2 & AV_CODEC_FLAG2_CHUNKS)) {
+        if (s->mb_width * s->mb_height * 11LL / (33 * 2 * 8) > buf_size)
+            return AVERROR_INVALIDDATA;
+    }
+
     /* start frame decoding */
     if (s->first_field || s->picture_structure == PICT_FRAME) {
         AVFrameSideData *pan_scan;
@@ -1728,7 +1723,7 @@ static int mpeg_decode_slice(MpegEncContext *s, int mb_y,
     ff_mpeg1_clean_buffers(s);
     s->interlaced_dct = 0;
 
-    s->qscale = get_qscale(s);
+    s->qscale = mpeg_get_qscale(s);
 
     if (s->qscale == 0) {
         av_log(s->avctx, AV_LOG_ERROR, "qscale == 0\n");
@@ -1969,6 +1964,8 @@ static int mpeg_decode_slice(MpegEncContext *s, int mb_y,
                     s->mv[0][0][1] = s->last_mv[0][0][1];
                     s->mv[1][0][0] = s->last_mv[1][0][0];
                     s->mv[1][0][1] = s->last_mv[1][0][1];
+                    s->field_select[0][0] = (s->picture_structure - 1) & 1;
+                    s->field_select[1][0] = (s->picture_structure - 1) & 1;
                 }
             }
         }
@@ -2019,13 +2016,15 @@ static int slice_decode_thread(AVCodecContext *c, void *arg)
 
         start_code = -1;
         buf        = avpriv_find_start_code(buf, s->gb.buffer_end, &start_code);
+        if (start_code < SLICE_MIN_START_CODE || start_code > SLICE_MAX_START_CODE)
+            return AVERROR_INVALIDDATA;
         mb_y       = start_code - SLICE_MIN_START_CODE;
         if (s->codec_id != AV_CODEC_ID_MPEG1VIDEO && s->mb_height > 2800/16)
             mb_y += (*buf&0xE0)<<2;
         mb_y <<= field_pic;
         if (s->picture_structure == PICT_BOTTOM_FIELD)
             mb_y++;
-        if (mb_y < 0 || mb_y >= s->end_mb_y)
+        if (mb_y >= s->end_mb_y)
             return AVERROR_INVALIDDATA;
     }
 }

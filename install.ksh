@@ -46,9 +46,9 @@ function create_rpm
     git fetch --tags
     #we create a branch from the tag
     git checkout -b i$VERSION i$VERSION  
-    git status | grep nothing
-    if [ $? == 0 ]
-    then
+    #git status | grep nothing
+    #if [ $? == 0 ]
+    #then
       #Cree le package
       if [ "$1" != "nosign" ]
       then 
@@ -67,11 +67,11 @@ function create_rpm
         clean
         exit 20
       fi
-    else
-      clean
-      echo "*** error during build - some source files are not commited ***"
-      exit 20
-    fi
+    #else
+     # clean
+      #echo "*** error during build - some source files are not commited ***"
+      #exit 20
+    #fi
 }
 
 function clean

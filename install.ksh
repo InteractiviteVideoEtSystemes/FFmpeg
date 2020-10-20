@@ -45,10 +45,7 @@ function create_rpm
     # we recover latest tags
     git fetch --tags
     #we create a branch from the tag
-    git checkout -b i${VERSION}b i${VERSION}b
-    git status | grep nothing
-    if [ $? == 0 ]
-    then
+    git checkout -b i${VERSION}b i${VERSION}
       #Cree le package
       if [ "$1" != "nosign" ]
       then 
@@ -67,11 +64,6 @@ function create_rpm
         clean
         exit 20
       fi
-    else
-      clean
-      echo "*** error during build - some source files are not commited ***"
-      exit 20
-    fi
 }
 
 function clean
@@ -84,7 +76,7 @@ function clean
     git pull
   
     #we delete the branch no longer used
-    git branch -D i${VERSION}b
+    git branch -D i${VERSION}
 }
 
 case $1 in

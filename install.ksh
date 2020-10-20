@@ -2,7 +2,7 @@
 
 #Nom du paquetage
 PROJET=ffmpeg
-VERSION=3.3.7b
+VERSION=3.3.7
 #Repertoire temporaire utiliser pour preparer les packages
 TEMPDIR=/tmp
 
@@ -45,7 +45,7 @@ function create_rpm
     # we recover latest tags
     git fetch --tags
     #we create a branch from the tag
-    git checkout -b i$VERSION i$VERSION  
+    git checkout -b i${VERSION}b i${VERSION}b
     git status | grep nothing
     if [ $? == 0 ]
     then
